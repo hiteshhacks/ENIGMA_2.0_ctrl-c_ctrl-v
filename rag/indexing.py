@@ -48,7 +48,8 @@ vector_store = QdrantVectorStore.from_documents(
     embedding=embedding_model,
     url=os.getenv("QDRANT_URL"),
     api_key=os.getenv("QDRANT_API_KEY_CLOUD"),
-    collection_name="cancer_rag"
+    collection_name="cancer_rag",
+    batch_size=16
 )
 
 print("Indexing of MULTIPLE documents done successfully!")
