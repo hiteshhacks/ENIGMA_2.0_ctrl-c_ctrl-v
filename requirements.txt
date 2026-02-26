@@ -14,3 +14,4 @@ langchain-qdrant
 groq
 joblib
 xgboost 
+sklearn
