@@ -14,4 +14,4 @@ langchain-qdrant
 groq
 joblib
 xgboost 
-sklearn
+scikit-learn
