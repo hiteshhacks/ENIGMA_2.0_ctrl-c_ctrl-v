@@ -17,3 +17,4 @@ xgboost
 scikit-learn
 ddgs
 sentence-transformers
+python-multipart
