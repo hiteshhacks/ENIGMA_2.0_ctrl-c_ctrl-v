@@ -12,3 +12,4 @@ langchain-core
 langchain-huggingface
 langchain-qdrant
 groq
+joblib
