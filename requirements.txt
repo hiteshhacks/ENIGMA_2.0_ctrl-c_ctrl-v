@@ -1,4 +1,4 @@
- fastapi
+fastapi
 uvicorn
 python-dotenv
 supabase
@@ -16,3 +16,4 @@ joblib
 xgboost 
 scikit-learn
 ddgs
+sentence-transformers
