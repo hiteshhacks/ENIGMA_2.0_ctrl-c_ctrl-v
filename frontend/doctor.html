@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Doctor Dashboard</title>
+</head>
+<body>
+
+<h2>Doctor Dashboard</h2>
+<button onclick="logout()">Logout</button>
+
+<p>Doctor-specific tools coming soon...</p>
+
+<script>
+
+const token = localStorage.getItem("token");
+if (!token) {
+  window.location.href = "login.html";
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+}
+
+</script>
+
+</body>
+</html>
