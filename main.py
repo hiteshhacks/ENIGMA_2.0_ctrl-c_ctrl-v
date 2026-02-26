@@ -5,11 +5,12 @@ from pydantic import BaseModel
 from supabase import create_client
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from pathlib import Path
 import shutil
 from agents.ml_model import predict_cancer
 from agents.supervisor import SupervisorAgent
 from auth.auth import verify_token
-
+from routes.uploads import router as upload_router
 
 # -------------------------------
 # ENV VARIABLES
@@ -27,6 +28,8 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="AI Early Cancer Detection API")
 
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Change in production
@@ -34,6 +37,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(upload_router)
 #-----------------------------
 # ML MODEL
 #------------------------------
@@ -86,39 +92,64 @@ def chat_with_ai(data: AskRequests, user=Depends(verify_token)):
 # -------------------------------
 
 UPLOAD_DIR = "uploads"
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB limit
+ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png"]
 
 
 @app.post("/upload")
-async def upload_report(file: UploadFile = File(...), user=Depends(verify_token)):
+async def upload_report(
+    file: UploadFile = File(...),
+    user: dict = Depends(verify_token)
+):
     try:
-        # Ensure upload directory exists
-        if not os.path.exists(UPLOAD_DIR):
-            os.makedirs(UPLOAD_DIR)
+        # 1️⃣ Validate file type
+        if file.content_type not in ALLOWED_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail="Only PDF, JPG, and PNG files are allowed."
+            )
 
-        # Secure file name
+        # 2️⃣ Validate file size
+        file.file.seek(0, 2)  # Move to end of file
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset pointer
+
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail="File size exceeds 5MB limit."
+            )
+
+        # 3️⃣ Ensure upload directory exists
+        Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+
+        # 4️⃣ Secure filename (remove spaces & risky chars)
+        safe_filename = file.filename.replace(" ", "_")
         file_path = os.path.join(
             UPLOAD_DIR,
-            f"{user['id']}_{file.filename}"
+            f"{user['id']}_{safe_filename}"
         )
 
-        # Save file locally
+        # 5️⃣ Save file locally
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Store reference in Supabase
+        # 6️⃣ Save reference in Supabase
         supabase.table("reports").insert({
             "user_id": user["id"],
-            "file_path": file_path
+            "file_path": file_path,
+            "file_type": file.content_type,
+            "file_size": file_size
         }).execute()
 
         return {
             "message": "File uploaded successfully",
-            "path": file_path
+            "file_name": safe_filename,
+            "file_size_kb": round(file_size / 1024, 2)
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=str(e))    
 
 
 @app.post("/predict")
@@ -134,3 +165,20 @@ def predict(data: CancerInput):
 
     result = predict_cancer(formatted_data)
     return result
+
+
+class LoginSchema(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/login")
+def login(data: LoginSchema):
+    response = supabase.auth.sign_in_with_password({
+        "email": data.email,
+        "password": data.password
+    })
+
+    return {
+        "access_token": response.session.access_token
+    }
