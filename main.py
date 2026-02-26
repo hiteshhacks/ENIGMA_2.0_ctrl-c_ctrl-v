@@ -11,6 +11,8 @@ from agents.ml_model import predict_cancer
 from agents.supervisor import supervisor
 from auth.auth import verify_token
 from routes.uploads import router as upload_router
+from dotenv import load_dotenv
+load_dotenv()
 
 # -------------------------------
 # ENV VARIABLES
@@ -18,8 +20,9 @@ from routes.uploads import router as upload_router
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = create_client(SUPABASE_URL,SUPABASE_KEY,SUPABASE_SERVICE_ROLE_KEY)
 
 
 # -------------------------------

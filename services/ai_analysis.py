@@ -19,6 +19,8 @@ async def analyze_and_update(report_id: str, file_path: str, role: str):
     try:
         # 1️⃣ Extract text from report
         text = extract_text_from_pdf(file_path)
+        MAX_CHARS = 4000
+        text = text[:MAX_CHARS]
 
         # 2️⃣ Role-based prompt
         if role == "doctor":
