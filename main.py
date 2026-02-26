@@ -1,6 +1,6 @@
  # main.py
 
-from fastapi import FastAPI, Depends, UploadFile, File
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,7 +42,7 @@ app.add_middleware(
 
 class AskRequests(BaseModel):
     query: str
-
+    vision_score: float | None = None
 
 # -------------------------------
 # CHAT ENDPOINT (SECURE)
@@ -50,19 +50,27 @@ class AskRequests(BaseModel):
 
 @app.post("/chat")
 def chat_with_ai(data: AskRequests, user=Depends(verify_token)):
+    try:
+        # Run Supervisor (handles RAG or Agent Team routing)
+        response = SupervisorAgent.run(
+            query=data.query,
+            vision_score=data.vision_score
+        )
 
-    response = SupervisorAgent.run(data.query)
+        # Store chat history
+        supabase.table("chat_history").insert({
+            "user_id": user["id"],
+            "user_message": data.query,
+            "ai_response": str(response)
+        }).execute()
 
-    supabase.table("chat_history").insert({
-        "user_id": user["id"],
-        "user_message": data.query,
-        "ai_response": str(response)
-    }).execute()
+        return {
+            "response": response,
+            "disclaimer": "This system provides AI-assisted risk analysis and is not a substitute for professional medical diagnosis."
+        }
 
-    return {
-        "response": response,
-        "disclaimer": "This system provides AI-assisted risk analysis and is not a substitute for professional medical diagnosis."
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -------------------------------
@@ -71,23 +79,34 @@ def chat_with_ai(data: AskRequests, user=Depends(verify_token)):
 
 UPLOAD_DIR = "uploads"
 
+
 @app.post("/upload")
 async def upload_report(file: UploadFile = File(...), user=Depends(verify_token)):
+    try:
+        # Ensure upload directory exists
+        if not os.path.exists(UPLOAD_DIR):
+            os.makedirs(UPLOAD_DIR)
 
-    if not os.path.exists(UPLOAD_DIR):
-        os.makedirs(UPLOAD_DIR)
+        # Secure file name
+        file_path = os.path.join(
+            UPLOAD_DIR,
+            f"{user['id']}_{file.filename}"
+        )
 
-    file_path = f"{UPLOAD_DIR}/{user['id']}_{file.filename}"
+        # Save file locally
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        # Store reference in Supabase
+        supabase.table("reports").insert({
+            "user_id": user["id"],
+            "file_path": file_path
+        }).execute()
 
-    supabase.table("reports").insert({
-        "user_id": user["id"],
-        "file_path": file_path
-    }).execute()
+        return {
+            "message": "File uploaded successfully",
+            "path": file_path
+        }
 
-    return {
-        "message": "File uploaded successfully",
-        "path": file_path
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
