@@ -6,7 +6,7 @@ from supabase import create_client
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
-
+from agents.ml_model import predict_cancer
 from agents.supervisor import SupervisorAgent
 from auth.auth import verify_token
 
@@ -34,7 +34,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+#-----------------------------
+# ML MODEL
+#------------------------------
+class CancerInput(BaseModel):
+    Diagnosis_Age: float
+    Mutation_Count: float
+    Number_of_Samples_Per_Patient: float
+    TMB_nonsynonymous: float
+    Sex: str
 
 # -------------------------------
 # REQUEST SCHEMA
@@ -110,3 +118,19 @@ async def upload_report(file: UploadFile = File(...), user=Depends(verify_token)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@app.post("/predict")
+def predict(data: CancerInput):
+
+    formatted_data = {
+        "Diagnosis Age": data.Diagnosis_Age,
+        "Mutation Count": data.Mutation_Count,
+        "Number of Samples Per Patient": data.Number_of_Samples_Per_Patient,
+        "TMB (nonsynonymous)": data.TMB_nonsynonymous,
+        "Sex": data.Sex
+    }
+
+    result = predict_cancer(formatted_data)
+    return result
