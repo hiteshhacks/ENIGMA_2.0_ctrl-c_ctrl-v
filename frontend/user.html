@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
   <title>User Dashboard</title>
@@ -7,30 +7,25 @@
 <body>
 
 <h2>User Dashboard</h2>
-
 <button onclick="logout()">Logout</button>
 
 <hr>
 
-<h3>Chat Endpoint Test</h3>
+<h3>Chat</h3>
 <textarea id="query" placeholder="Ask AI"></textarea><br><br>
 <button onclick="askAI()">Send</button>
 
-<pre id="response"></pre>
+<pre id="chatResult"></pre>
 
 <hr>
 
-<h3>Upload Endpoint Test</h3>
+<h3>Upload</h3>
 <input type="file" id="file">
 <button onclick="uploadFile()">Upload</button>
 
-<pre id="uploadResponse"></pre>
+<pre id="uploadResult"></pre>
 
 <script>
-
-// -------------------------
-// SUPABASE CONFIG
-// -------------------------
 
 const SUPABASE_URL = "https://puowbtitbwrretgimmkb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1b3didGl0YndycmV0Z2ltbWtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMzQ1ODMsImV4cCI6MjA4NzYxMDU4M30.mTpAolvyE1biwJb2ErKL35zT6OWl6OE4P_GBQdcBhl4";
@@ -40,35 +35,22 @@ const client = window.supabase.createClient(
   SUPABASE_ANON_KEY
 );
 
-// -------------------------
-// AUTH CHECK (IMPORTANT)
-// -------------------------
-
+// Protect page
 window.onload = async function () {
   const { data } = await client.auth.getSession();
-
   if (!data.session) {
     window.location.href = "login.html";
   }
 };
 
-// -------------------------
-// LOGOUT (REAL LOGOUT)
-// -------------------------
-
+// Logout
 async function logout() {
   await client.auth.signOut();
-  localStorage.removeItem("token");
   window.location.href = "login.html";
 }
 
-// -------------------------
-// CHAT ENDPOINT TEST
-// -------------------------
-
+// Chat endpoint
 async function askAI() {
-  const query = document.getElementById("query").value;
-
   const { data } = await client.auth.getSession();
   const token = data.session.access_token;
 
@@ -78,24 +60,22 @@ async function askAI() {
       "Content-Type": "application/json",
       "Authorization": "Bearer " + token
     },
-    body: JSON.stringify({ query })
+    body: JSON.stringify({
+      query: document.getElementById("query").value
+    })
   });
 
   const result = await res.json();
-
-  document.getElementById("response").innerText =
+  document.getElementById("chatResult").innerText =
     JSON.stringify(result, null, 2);
 }
 
-// -------------------------
-// UPLOAD ENDPOINT TEST
-// -------------------------
-
+// Upload endpoint
 async function uploadFile() {
   const fileInput = document.getElementById("file");
 
   if (!fileInput.files.length) {
-    alert("Please select a file.");
+    alert("Select file first");
     return;
   }
 
@@ -114,8 +94,7 @@ async function uploadFile() {
   });
 
   const result = await res.json();
-
-  document.getElementById("uploadResponse").innerText =
+  document.getElementById("uploadResult").innerText =
     JSON.stringify(result, null, 2);
 }
 

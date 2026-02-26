@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
   <title>Login</title>
@@ -8,39 +8,19 @@
 
 <h2>Login</h2>
 
-<input type="email" id="email" placeholder="Email"><br><br>
-<input type="password" id="password" placeholder="Password"><br><br>
-
-<button onclick="login()">Login</button>
 <button onclick="googleLogin()">Login with Google</button>
 
 <script>
 
 const SUPABASE_URL = "https://puowbtitbwrretgimmkb.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1b3didGl0YndycmV0Z2ltbWtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMzQ1ODMsImV4cCI6MjA4NzYxMDU4M30.mTpAolvyE1biwJb2ErKL35zT6OWl6OE4P_GBQdcBhl4";
 
 const client = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
 
-async function login() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { data, error } = await client.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  redirectUser(data.session);
-}
-
+// Google OAuth
 async function googleLogin() {
   await client.auth.signInWithOAuth({
     provider: "google",
@@ -50,28 +30,19 @@ async function googleLogin() {
   });
 }
 
-async function redirectUser(session) {
-  if (!session) return;
-
-  localStorage.setItem("token", session.access_token);
-
-  const { data } = await client.auth.getUser();
-  const user = data.user;
-
-  const role = user.user_metadata?.role || "user";
-
-  if (role === "doctor") {
-    window.location.href = "doctor.html";
-  } else {
-    window.location.href = "user.html";
-  }
-}
-
-// Automatically handle OAuth redirect
+// On load → check session
 window.onload = async function () {
   const { data } = await client.auth.getSession();
+
   if (data.session) {
-    redirectUser(data.session);
+    const { data: userData } = await client.auth.getUser();
+    const role = userData.user.user_metadata?.role || "user";
+
+    if (role === "doctor") {
+      window.location.href = "doctor.html";
+    } else {
+      window.location.href = "user.html";
+    }
   }
 };
 
