@@ -27,4 +27,4 @@ SupervisorAgent = Team(
     """
     )
 
-SupervisorAgent .print_response("What are early symptoms of blood cancer?", markdown=True)
+# SupervisorAgent .print_response("What are early symptoms of blood cancer?", markdown=True)
