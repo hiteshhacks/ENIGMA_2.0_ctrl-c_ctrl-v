@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 
 from services.ai_analysis import analyze_and_update
 from auth.auth import verify_token  # your existing auth
+from agents.summarizer import summarize_medical_text
+from utils.extractor import extract_text_from_pdf
+from agents.medgemma import run_medgemma_inference
 
 load_dotenv()
 
@@ -55,12 +58,25 @@ async def upload_report(
 
         if user["id"] == "mock_test_id_123":
             # Testing mock response without inserting into database
+            
+            raw_text = ""
+            try:
+                if file.content_type == "application/pdf":
+                    raw_text = extract_text_from_pdf(file_path)
+                elif file.content_type in ["image/jpeg", "image/png"]:
+                    raw_text = run_medgemma_inference("Extract all visible clinical text and values exactly as written in this report.", file_path)
+            except Exception as parse_e:
+                raw_text = f"Could not parse file: {str(parse_e)}"
+            
+            # 2. Use facebook/bart-large-cnn summarizer to digest the text
+            final_summary = summarize_medical_text(raw_text) if raw_text.strip() else "File appeared empty or unreadable."
+
             return {
-                "message": "Report uploaded successfully. (Mock Response)",
+                "message": "Report uploaded successfully.",
                 "report_id": 999,
                 "status": "analyzed",
-                "summary": "This is a dummy AI summary generated in mock testing mode. MOCK_ABNORMALITIES_DETECTED.",
-                "abnormalMarkers": ["Elevated dummy marker X"]
+                "summary": final_summary,
+                "abnormalMarkers": ["Detected via OCR pipeline if applicable"]
             }
 
         # Insert DB record

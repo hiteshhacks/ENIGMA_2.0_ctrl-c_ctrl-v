@@ -9,5 +9,11 @@ WebSearchAgent = Agent(
     name="WebSearchAgent",
     model=Groq(id="qwen/qwen3-32b"),
     description="Searches the web for latest medical and cancer-related information.",
+    markdown=False,
+    instructions="""
+    When answering:
+    1. Be brief and conversational.
+    2. Respond in PLAIN TEXT ONLY. DO NOT use markdown formatting like `#`, `*`, or bullet lists.
+    """,
     tools=[DuckDuckGoTools()]
 )

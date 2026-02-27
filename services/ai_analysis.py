@@ -2,7 +2,8 @@
 
 from supabase import create_client
 from utils.extractor import extract_text_from_pdf
-from agents.cancer_agent import CancerKnowledgeAgent  # adjust this
+from agents.summarizer import summarize_medical_text
+from agents.medgemma import run_medgemma_inference
 
 import os
 from dotenv import load_dotenv
@@ -18,34 +19,18 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 async def analyze_and_update(report_id: str, file_path: str, role: str):
     try:
         # 1️⃣ Extract text from report
-        text = extract_text_from_pdf(file_path)
-        MAX_CHARS = 4000
-        text = text[:MAX_CHARS]
-
-        # 2️⃣ Role-based prompt
-        if role == "doctor":
-            style_prompt = "Provide detailed clinical interpretation with biomarkers and differential diagnosis."
+        raw_text = ""
+        if file_path.endswith('.pdf'):
+            raw_text = extract_text_from_pdf(file_path)
         else:
-            style_prompt = "Explain findings in simple language for patient. Be reassuring but factual."
+            raw_text = run_medgemma_inference("Extract all visible clinical text and values exactly as written in this report.", f"file:///{os.path.abspath(file_path)}")
 
-        # 3️⃣ Send to AI Agent
-        response = CancerKnowledgeAgent.run(
-            f"""
-            You are an oncology AI specialist.
+        # 2️⃣ Run facebook/bart-large-cnn
+        summary_result = "No readable text found."
+        if raw_text and raw_text.strip():
+             summary_result = summarize_medical_text(raw_text)
 
-            {style_prompt}
-
-            Analyze this medical report:
-
-            {text}
-
-            Provide:
-            - Risk Level
-            - Key Findings
-            - Explanation
-            - Recommended Next Steps
-            """
-        )
+        response = summary_result
 
         # 4️⃣ Update DB
         supabase.table("reports").update({
