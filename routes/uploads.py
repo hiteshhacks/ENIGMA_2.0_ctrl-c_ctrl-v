@@ -53,6 +53,16 @@ async def upload_report(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        if user["id"] == "mock_test_id_123":
+            # Testing mock response without inserting into database
+            return {
+                "message": "Report uploaded successfully. (Mock Response)",
+                "report_id": 999,
+                "status": "analyzed",
+                "summary": "This is a dummy AI summary generated in mock testing mode. MOCK_ABNORMALITIES_DETECTED.",
+                "abnormalMarkers": ["Elevated dummy marker X"]
+            }
+
         # Insert DB record
         report = supabase.table("reports").insert({
             "user_id": user["id"],

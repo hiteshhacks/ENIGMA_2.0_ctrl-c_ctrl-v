@@ -55,4 +55,15 @@ export const api = {
 
   chat: (data: any) => request('/chat', {
     method: 'POST',
-    body: JSON
+    body: JSON.stringify(data),
+  }),
+
+  uploadReport: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request('/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+};

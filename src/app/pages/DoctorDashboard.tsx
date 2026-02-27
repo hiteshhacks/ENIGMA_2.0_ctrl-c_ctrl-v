@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { PredictionForm } from '../components/PredictionForm';
 
 interface DoctorDashboardProps {
@@ -40,16 +41,17 @@ interface DoctorDashboardProps {
 }
 
 export function DoctorDashboard({ darkMode, setDarkMode }: DoctorDashboardProps) {
+  const { t, i18n } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showNotifications, setShowNotifications] = useState(false);
 
   const menuItems = [
-    { id: 'overview', label: 'Dashboard', icon: Stethoscope },
-    { id: 'patients', label: 'Patients', icon: Users },
-    { id: 'analysis', label: 'AI Analysis', icon: Brain },
-    { id: 'consultations', label: 'Consultations', icon: MessageCircle },
-    { id: 'alerts', label: 'Critical Alerts', icon: AlertTriangle }
+    { id: 'overview', label: t('Dashboard'), icon: Stethoscope },
+    { id: 'patients', label: t('Patients'), icon: Users },
+    { id: 'analysis', label: t('AI Analysis'), icon: Brain },
+    { id: 'consultations', label: t('Consultations'), icon: MessageCircle },
+    { id: 'alerts', label: t('Critical Alerts'), icon: AlertTriangle }
   ];
 
   const notifications = [
@@ -77,7 +79,7 @@ export function DoctorDashboard({ darkMode, setDarkMode }: DoctorDashboardProps)
                 </div>
                 <div>
                   <h1 className="font-bold text-lg text-foreground">OncoDetect AI</h1>
-                  <p className="text-xs text-muted-foreground">Doctor Portal</p>
+                  <p className="text-xs text-muted-foreground">{t('Doctor Portal')}</p>
                 </div>
               </div>
 
@@ -119,11 +121,17 @@ export function DoctorDashboard({ darkMode, setDarkMode }: DoctorDashboardProps)
               <div className="mt-8 pt-8 border-t border-border space-y-2">
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted transition-all">
                   <Settings className="w-5 h-5" />
-                  <span>Settings</span>
+                  <span>{t('Settings')}</span>
                 </button>
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-all">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-all"
+                >
                   <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
+                  <span>{t('Logout')}</span>
                 </button>
               </div>
             </div>
@@ -144,11 +152,27 @@ export function DoctorDashboard({ darkMode, setDarkMode }: DoctorDashboardProps)
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <h2 className="text-xl font-semibold text-foreground">
-                {menuItems.find((item) => item.id === activeTab)?.label || 'Dashboard'}
+                {menuItems.find((item) => item.id === activeTab)?.label || t('Dashboard')}
               </h2>
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Language Switcher */}
+              <div className="relative">
+                <select
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  value={i18n.language}
+                  className="appearance-none bg-muted text-foreground px-3 py-2 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-secondary text-sm font-medium"
+                >
+                  <option value="en">English</option>
+                  <option value="hi">हिंदी (Hindi)</option>
+                  <option value="mr">मराठी (Marathi)</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-foreground">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                </div>
+              </div>
+
               <button
                 onClick={() => setDarkMode(!darkMode)}
                 className="p-2 hover:bg-muted rounded-lg transition-all"

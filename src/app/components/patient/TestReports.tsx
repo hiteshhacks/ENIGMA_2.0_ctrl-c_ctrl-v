@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Upload, FileText, Download, Eye, AlertCircle, CheckCircle2, Brain } from 'lucide-react';
+import { Upload, FileText, Download, Eye, AlertCircle, CheckCircle2, Brain, Loader2 } from 'lucide-react';
+import { api } from '../../../services/api';
 
 interface Report {
   id: number;
@@ -10,26 +11,29 @@ interface Report {
   status: 'analyzed' | 'processing' | 'pending';
   aiSummary?: string;
   abnormalMarkers?: string[];
+  url?: string;
 }
 
 const mockReports: Report[] = [
   {
     id: 1,
-    name: 'Complete Blood Count (CBC)',
+    name: 'Complete Blood Count (WBC Abnormal)',
     type: 'Blood Test',
     date: '2026-02-20',
     status: 'analyzed',
-    aiSummary: 'All values within normal range. No concerning markers detected.',
-    abnormalMarkers: []
+    aiSummary: 'Elevated WBC count detected. May indicate infection or other conditions.',
+    abnormalMarkers: ['WBC > 11.0'],
+    url: 'http://localhost:8000/images/abnormal_wbc.jpg'
   },
   {
     id: 2,
-    name: 'Tumor Marker Analysis',
-    type: 'Cancer Screening',
+    name: 'Complete Blood Count (RBC Abnormal)',
+    type: 'Blood Test',
     date: '2026-02-15',
     status: 'analyzed',
-    aiSummary: 'CEA and CA 19-9 levels normal. No indication of malignancy.',
-    abnormalMarkers: []
+    aiSummary: 'Abnormal RBC levels detected.',
+    abnormalMarkers: ['RBC count outside normal range'],
+    url: 'http://localhost:8000/images/abnormal_rbc.jpg'
   },
   {
     id: 3,
@@ -38,13 +42,16 @@ const mockReports: Report[] = [
     date: '2026-02-10',
     status: 'analyzed',
     aiSummary: 'Clear lung fields. No masses or abnormalities detected.',
-    abnormalMarkers: []
+    abnormalMarkers: [],
+    url: 'http://localhost:8000/images/chest_x_ray.png'
   }
 ];
 
 export default function TestReports() {
-  const [reports] = useState<Report[]>(mockReports);
+  const [reports, setReports] = useState<Report[]>(mockReports);
   const [dragActive, setDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -56,11 +63,43 @@ export default function TestReports() {
     }
   };
 
+  const uploadFile = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const response = await api.uploadReport(file);
+      const newReport: Report = {
+        id: Date.now(),
+        name: file.name,
+        type: file.type.includes('pdf') ? 'Medical Record' : 'Scan Image',
+        date: new Date().toISOString().split('T')[0],
+        status: 'analyzed',
+        aiSummary: response.summary || response.reply || 'Analysis complete.',
+        abnormalMarkers: response.abnormalMarkers || []
+      };
+      setReports([newReport, ...reports]);
+    } catch (err: any) {
+      alert("Upload failed: " + err.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    // Handle file upload here
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      uploadFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      uploadFile(e.target.files[0]);
+    }
   };
 
   return (
@@ -77,22 +116,32 @@ export default function TestReports() {
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        className={`p-8 rounded-2xl border-2 border-dashed transition-all ${
-          dragActive 
-            ? 'border-primary bg-primary/5' 
-            : 'border-border hover:border-primary hover:bg-muted/50'
-        }`}
+        className={`p-8 rounded-2xl border-2 border-dashed transition-all ${dragActive
+          ? 'border-primary bg-primary/5'
+          : 'border-border hover:border-primary hover:bg-muted/50'
+          }`}
       >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleChange}
+          accept="application/pdf,image/*"
+          className="hidden"
+        />
         <div className="text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0B3C5D] to-[#1CA7A6] flex items-center justify-center mx-auto mb-4">
-            <Upload className="w-8 h-8 text-white" />
+            {isUploading ? <Loader2 className="w-8 h-8 text-white animate-spin" /> : <Upload className="w-8 h-8 text-white" />}
           </div>
-          <h3 className="font-semibold mb-2">Upload Medical Reports</h3>
+          <h3 className="font-semibold mb-2">{isUploading ? 'Uploading & Analyzing...' : 'Upload Medical Reports'}</h3>
           <p className="text-sm text-muted-foreground mb-4">
             Drag and drop your PDF or image files here, or click to browse
           </p>
-          <button className="px-6 py-2 bg-gradient-to-r from-[#0B3C5D] to-[#1CA7A6] text-white rounded-xl hover:shadow-lg transition-all">
-            Choose Files
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="px-6 py-2 bg-gradient-to-r from-[#0B3C5D] to-[#1CA7A6] text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
+          >
+            {isUploading ? 'Processing...' : 'Choose Files'}
           </button>
           <p className="text-xs text-muted-foreground mt-4">
             Supported formats: PDF, JPG, PNG (Max 10MB)
@@ -109,7 +158,7 @@ export default function TestReports() {
           <div>
             <h3 className="font-semibold mb-2">AI-Powered Analysis</h3>
             <p className="text-sm text-muted-foreground">
-              Our advanced AI automatically analyzes your reports, identifies abnormal markers, 
+              Our advanced AI automatically analyzes your reports, identifies abnormal markers,
               and provides easy-to-understand summaries within minutes.
             </p>
           </div>
@@ -184,8 +233,12 @@ export default function TestReports() {
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90 transition-opacity">
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => report.url && window.open(report.url, '_blank')}
+                disabled={!report.url}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
                 <Eye className="w-4 h-4" />
                 <span>View Report</span>
               </button>

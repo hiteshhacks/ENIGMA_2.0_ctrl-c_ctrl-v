@@ -30,6 +30,7 @@ import {
   Zap
 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { RiskOverviewCard } from '../components/RiskOverviewCard';
 import { AIChatAssistant } from '../components/AIChatAssistant';
 import { SymptomLogger } from '../components/SymptomLogger';
@@ -45,18 +46,19 @@ interface PatientDashboardProps {
 }
 
 export function PatientDashboard({ darkMode, setDarkMode }: PatientDashboardProps) {
+  const { t, i18n } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showNotifications, setShowNotifications] = useState(false);
 
   const menuItems = [
-    { id: 'overview', label: 'Overview', icon: Dna },
-    { id: 'symptoms', label: 'Symptom Logger', icon: Activity },
-    { id: 'reports', label: 'Test Reports', icon: FileText },
-    { id: 'medicine', label: 'Medicine Tracker', icon: Pill },
-    { id: 'doctors', label: 'Find Doctors', icon: Users },
-    { id: 'insights', label: 'Health Insights', icon: TrendingUp },
-    { id: 'blog', label: 'Education Hub', icon: BookOpen }
+    { id: 'overview', label: t('Overview'), icon: Dna },
+    { id: 'symptoms', label: t('Symptom Logger'), icon: Activity },
+    { id: 'reports', label: t('Test Reports'), icon: FileText },
+    { id: 'medicine', label: t('Medicine Tracker'), icon: Pill },
+    { id: 'doctors', label: t('Find Doctors'), icon: Users },
+    { id: 'insights', label: t('Health Insights'), icon: TrendingUp },
+    { id: 'blog', label: t('Education Hub'), icon: BookOpen }
   ];
 
   const notifications = [
@@ -78,14 +80,11 @@ export function PatientDashboard({ darkMode, setDarkMode }: PatientDashboardProp
             className="w-72 bg-card border-r border-border fixed h-full z-30 overflow-y-auto"
           >
             <div className="p-6">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <div className="flex items-center gap-3 mb-8 px-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0B3C5D] to-[#1CA7A6] flex items-center justify-center">
                   <Dna className="w-6 h-6 text-white" />
                 </div>
-                <div>
-                  <h1 className="font-bold text-lg text-foreground">OncoDetect AI</h1>
-                  <p className="text-xs text-muted-foreground">Patient Portal</p>
-                </div>
+                {sidebarOpen && <span className="text-xl font-bold text-foreground">OncoDetect AI</span>}
               </div>
 
               <div className="mb-8 p-4 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20">
@@ -103,11 +102,10 @@ export function PatientDashboard({ darkMode, setDarkMode }: PatientDashboardProp
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                      activeTab === item.id
-                        ? 'bg-primary text-primary-foreground shadow-lg'
-                        : 'text-foreground hover:bg-muted'
-                    }`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id
+                      ? 'bg-primary text-primary-foreground shadow-lg'
+                      : 'text-foreground hover:bg-muted'
+                      }`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.label}</span>
@@ -119,11 +117,17 @@ export function PatientDashboard({ darkMode, setDarkMode }: PatientDashboardProp
               <div className="mt-8 pt-8 border-t border-border space-y-2">
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted transition-all">
                   <Settings className="w-5 h-5" />
-                  <span>Settings</span>
+                  <span>{t('Settings')}</span>
                 </button>
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-all">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-all"
+                >
                   <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
+                  <span>{t('Logout')}</span>
                 </button>
               </div>
             </div>
@@ -144,7 +148,7 @@ export function PatientDashboard({ darkMode, setDarkMode }: PatientDashboardProp
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <h2 className="text-xl font-semibold text-foreground">
-                {menuItems.find((item) => item.id === activeTab)?.label || 'Dashboard'}
+                {menuItems.find((item) => item.id === activeTab)?.label || t('Dashboard')}
               </h2>
             </div>
 
@@ -154,6 +158,22 @@ export function PatientDashboard({ darkMode, setDarkMode }: PatientDashboardProp
                 <AlertCircle className="w-4 h-4" />
                 Emergency
               </button>
+
+              {/* Language Switcher */}
+              <div className="relative">
+                <select
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  value={i18n.language}
+                  className="appearance-none bg-muted text-foreground px-3 py-2 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-secondary text-sm font-medium"
+                >
+                  <option value="en">English</option>
+                  <option value="hi">हिंदी (Hindi)</option>
+                  <option value="mr">मराठी (Marathi)</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-foreground">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                </div>
+              </div>
 
               {/* Dark Mode Toggle */}
               <button

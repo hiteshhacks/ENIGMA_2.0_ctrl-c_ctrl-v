@@ -159,7 +159,8 @@ def is_diagnostic_query(query: str):
     patterns = [
         r"malignant vs benign", r"mimicker", r"imaging features",
         r"biomarker ratio", r"risk weightage", r"granuloma",
-        r"nodule", r"tuberculosis", r"sarcoidosis"
+        r"nodule", r"tuberculosis", r"sarcoidosis",
+        r"report", r"test", r"results", r"explain"
     ]
     return any(re.search(p, q) for p in patterns)
 
@@ -197,21 +198,22 @@ def analyze_cancer_case(user_query: str, vision_score=None):
     if vision_score:
         vision_block = f"Teachable Machine Vision Score: {vision_score} (Probability of Malignancy)"
 
-    final_prompt = f"""
-You are a Medical Technical Analyst. Provide a formal clinical analysis.
 
-Clinical Research Context:
-{context if context else "No external RAG context available."}
+    final_prompt = f"""
+You are an empathetic, expert Clinical Assistant.
+
+Clinical Research Context (From Internal RAG DB):
+{context if context else "No distinct external RAG context available for this."}
 
 {vision_block}
 
-Structure your response:
-1. Clinical Summary
-2. Diagnostic Analysis (Distinguish between Malignant vs. Mimickers like TB/Sarcoidosis)
-3. Biomarker & History Weighting (Factor in risk multipliers)
-4. Technical Recommendation (Next steps for screening)
-
 User Query: {user_query}
+
+Instructions:
+1. Provide a conversational, highly concise, and relevant answer based on the context above.
+2. DO NOT output heavily formatted, cluttered markdown with rigid structural headers (like "1. Clinical Summary 2. Diagnostic Analysis") unless explicitly asked to generate a full formal report.
+3. If the user's query lacks context (for example, "Explain my report" but no text is provided), immediately stop and ask 1 or 2 specific clarifying questions to understand their situation better before jumping to conclusions.
+4. Keep the tone helpful, human-like, and professional.
 """
 
     chat = client.chat.completions.create(

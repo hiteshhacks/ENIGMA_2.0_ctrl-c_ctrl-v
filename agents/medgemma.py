@@ -6,9 +6,10 @@ load_dotenv()
 
 # Initialize the pipeline globally so it loads once when the app starts
 pipe = None
+init_error = None
 
 def init_medgemma():
-    global pipe
+    global pipe, init_error
     if pipe is None:
         try:
             print("Loading MedGemma model. This may take a while depending on hardware...")
@@ -21,6 +22,7 @@ def init_medgemma():
             )
             print("MedGemma loaded successfully.")
         except Exception as e:
+            init_error = str(e)
             print(f"Error loading MedGemma: {e}")
 
 def run_medgemma_inference(text_query: str, image_url: str = None) -> str:
@@ -29,7 +31,7 @@ def run_medgemma_inference(text_query: str, image_url: str = None) -> str:
         init_medgemma()
     
     if pipe is None:
-        return "MedGemma model could not be loaded."
+        return f"MedGemma Initialization Error: {init_error}"
 
     content = []
     if image_url:

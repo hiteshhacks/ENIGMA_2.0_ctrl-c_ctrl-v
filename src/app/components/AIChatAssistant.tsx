@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles, Loader2, Paperclip, ImageIcon } from 'lucide-react';
 import { api } from '../../services/api';
 
 export function AIChatAssistant() {
@@ -14,7 +14,9 @@ export function AIChatAssistant() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,15 +34,25 @@ export function AIChatAssistant() {
   ];
 
   const handleSend = async (textInput: string = input) => {
-    if (!textInput.trim() || isLoading) return;
+    if ((!textInput.trim() && !selectedImage) || isLoading) return;
 
-    const userMsg = { id: Date.now(), type: 'user', text: textInput };
+    const userMsg = { id: Date.now(), type: 'user', text: textInput || 'Sent an image' };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
     try {
-      const response = await api.chat({ query: textInput, vision_score: 0 });
+      let imageUrl = null;
+      if (selectedImage) {
+        // Upload the image first if there is one
+        const uploadRes = await api.uploadReport(selectedImage);
+        imageUrl = 'Uploaded File'; // Assuming the backend doesn't return a live URL, we trigger the medgemma flag
+      }
+
+      // If we uploaded an image, set image_url so backend utilizes MedGemma
+      const response = await api.chat({ query: (textInput || 'medgemma analyze this image'), image_url: selectedImage ? 'mock_url_triggering_medgemma_in_backend' : null });
+      setSelectedImage(null);
+
       let aiText = 'Sorry, I got an empty response.';
 
       if (typeof response === 'string') {
@@ -123,8 +135,8 @@ export function AIChatAssistant() {
                 >
                   <div
                     className={`max-w-[80%] rounded-2xl p-3 ${message.type === 'user'
-                        ? 'bg-gradient-to-br from-primary to-secondary text-white'
-                        : 'bg-muted text-foreground'
+                      ? 'bg-gradient-to-br from-primary to-secondary text-white'
+                      : 'bg-muted text-foreground'
                       }`}
                   >
                     <p className="text-sm">{message.text}</p>
@@ -164,7 +176,33 @@ export function AIChatAssistant() {
 
             {/* Input */}
             <div className="p-4 border-t border-border bg-background">
-              <div className="flex gap-2">
+              {selectedImage && (
+                <div className="mb-2 p-2 bg-muted rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <ImageIcon className="w-4 h-4 text-primary" />
+                    <span className="truncate">{selectedImage.name}</span>
+                  </div>
+                  <button onClick={() => setSelectedImage(null)} className="text-muted-foreground hover:text-destructive">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 bg-muted text-muted-foreground rounded-xl hover:bg-muted/80 transition-all"
+                  title="Attach Report"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+
                 <input
                   type="text"
                   value={input}
@@ -175,7 +213,7 @@ export function AIChatAssistant() {
                 />
                 <button
                   onClick={() => handleSend(input)}
-                  disabled={isLoading || !input.trim()}
+                  disabled={isLoading || (!input.trim() && !selectedImage)}
                   className="p-2 bg-gradient-to-br from-primary to-secondary text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />

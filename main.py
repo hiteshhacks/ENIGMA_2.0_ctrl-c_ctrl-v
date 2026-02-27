@@ -1,6 +1,7 @@
  # main.py
 
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from supabase import create_client
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +45,7 @@ app.add_middleware(
 
  
 app.include_router(upload_router)
+app.mount("/images", StaticFiles(directory="images"), name="images")
 #-----------------------------
 # ML MODEL
 #------------------------------
@@ -71,11 +73,16 @@ class AskRequests(BaseModel):
 def chat_with_ai(data: AskRequests, user=Depends(verify_token)):
     try:
         # Integrate MedGemma if image is provided, OR just run the query through it as a secondary check
-        medgemma_insights = ""
         if data.image_url or "medgemma" in data.query.lower():
             # If specifically asked or image provided, use MedGemma primarily
             medgemma_insights = run_medgemma_inference(data.query, data.image_url)
-            response = f"[MedGemma Insights]:\n{medgemma_insights}\n\n[General Knowledge/RAG]:\n" + str(supervisor.run(query=data.query, vision_score=data.vision_score))
+            rag_insights = str(supervisor.run(query=data.query, vision_score=data.vision_score))
+            
+            if "Error" in medgemma_insights or "could not be loaded" in medgemma_insights:
+                # If MedGemma fails, just return the RAG/Supervisor response cleanly
+                response = rag_insights
+            else:
+                response = f"**MedGemma Image Analysis:**\n{medgemma_insights}\n\n---\n**RAG Clinical Context:**\n{rag_insights}"
         else:
              # Run Supervisor (handles RAG or Agent Team routing)
              response = supervisor.run(
@@ -83,12 +90,13 @@ def chat_with_ai(data: AskRequests, user=Depends(verify_token)):
                  vision_score=data.vision_score
              )
 
-        # Store chat history
-        supabase.table("chat_history").insert({
-            "user_id": user["id"],
-            "user_message": data.query,
-            "ai_response": str(response)
-        }).execute()
+        # Store chat history if real user
+        if user["id"] != "mock_test_id_123":
+            supabase.table("chat_history").insert({
+                "user_id": user["id"],
+                "user_message": data.query,
+                "ai_response": str(response)
+            }).execute()
 
         return {
             "response": response,

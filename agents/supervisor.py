@@ -44,13 +44,14 @@ class SupervisorAgent:
             members=[WebSearchAgent, CancerKnowledgeAgent],
             model=Groq(id="qwen/qwen3-32b"),
             name="SupervisorAgent",
-            markdown=True,
+            markdown=False,
             show_members_responses=False,
             instructions="""
-            When a user asks a general cancer-related question:
-            1. Use WebSearchAgent for latest medical updates.
-            2. Use CancerKnowledgeAgent for structured educational explanation.
-            3. Combine both into a medically accurate and user-friendly response.
+            When a user asks a general medicine or cancer-related question:
+            1. First, evaluate if you have enough context. If the query is vague, simply ask clarifying questions in a highly conversational tone.
+            2. DO NOT use any markdown formatting (no hashes `#`, no asterisks `*`, no bullet points `-`). Write everything as regular, plain text paragraphs.
+            3. Use WebSearchAgent and CancerKnowledgeAgent selectively for factual checks.
+            4. Keep your final output extremely concise, conversational, and direct, as if texting a patient.
             """
         )
 
