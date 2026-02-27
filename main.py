@@ -11,6 +11,7 @@ from agents.ml_model import predict_cancer
 from agents.supervisor import supervisor
 from auth.auth import verify_token
 from routes.uploads import router as upload_router
+from agents.medgemma import run_medgemma_inference
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -60,6 +61,7 @@ class CancerInput(BaseModel):
 class AskRequests(BaseModel):
     query: str
     vision_score: float | None = None
+    image_url: str | None = None
 
 # -------------------------------
 # CHAT ENDPOINT (SECURE)
@@ -68,11 +70,18 @@ class AskRequests(BaseModel):
 @app.post("/chat")
 def chat_with_ai(data: AskRequests, user=Depends(verify_token)):
     try:
-        # Run Supervisor (handles RAG or Agent Team routing)
-        response = supervisor.run(
-            query=data.query,
-            vision_score=data.vision_score
-        )
+        # Integrate MedGemma if image is provided, OR just run the query through it as a secondary check
+        medgemma_insights = ""
+        if data.image_url or "medgemma" in data.query.lower():
+            # If specifically asked or image provided, use MedGemma primarily
+            medgemma_insights = run_medgemma_inference(data.query, data.image_url)
+            response = f"[MedGemma Insights]:\n{medgemma_insights}\n\n[General Knowledge/RAG]:\n" + str(supervisor.run(query=data.query, vision_score=data.vision_score))
+        else:
+             # Run Supervisor (handles RAG or Agent Team routing)
+             response = supervisor.run(
+                 query=data.query,
+                 vision_score=data.vision_score
+             )
 
         # Store chat history
         supabase.table("chat_history").insert({
@@ -117,11 +126,13 @@ class LoginSchema(BaseModel):
 
 @app.post("/login")
 def login(data: LoginSchema):
-    response = supabase.auth.sign_in_with_password({
-        "email": data.email,
-        "password": data.password
-    })
-
-    return {
-        "access_token": response.session.access_token
-    }
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": data.email,
+            "password": data.password
+        })
+        return {
+            "access_token": response.session.access_token
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
